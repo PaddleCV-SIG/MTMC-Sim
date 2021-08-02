@@ -1,0 +1,2 @@
+1 space_mini_figure 67 159 36 
+2 town_mini_figure 204 43 41 
