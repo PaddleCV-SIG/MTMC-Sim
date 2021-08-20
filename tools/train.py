@@ -30,9 +30,7 @@ logger = setup_logger('mtmc:trainer')
 from mtmc.config import settings
 
 # load dataset
-from ppdet.data.source.coco import COCODataSet
 from data.datasets.lego_city import LeGOCityDataSet
-from ppdet.data.reader import TrainReader, EvalReader
 
 def parser_args():
     # parse with yaml loader to load config values

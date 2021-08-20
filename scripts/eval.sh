@@ -9,4 +9,4 @@ DATA=$ROOT/data
 python -m pdb $TOOLKIT/eval.py \
   -c configs/ppyolo/ppyolo_r50vd_dcn_1x_coco.yml \
   --opts use_gpu=true \
-         weights=$ROOT/output/ppyolo_r50vd_dcn_1x_coco/191.pdparams
+         weights=output/ppyolo_r50vd_dcn_1x_coco/191.pdparams
