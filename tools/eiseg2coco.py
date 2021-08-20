@@ -12,6 +12,7 @@ from sklearn.model_selection import train_test_split
 
 from mtmc.config import settings
 
+useQtBottomLeft = True # should be Qt TopLeft
 
 class MyEncoder(json.JSONEncoder):
     def default(self, val):
@@ -54,6 +55,15 @@ def save_coco_annotation(dataset, coco_annotation_path):
             img_idx = annotation["image_id"]
             img_info = imgs_info_indexed_by_img_idx[img_idx]
             img_name = img_info["file_name"]
+            # annotation polygon
+            epsilon = 1e-5
+            if 'iscrowd' not in annotation:
+                annotation['iscrowd'] = 0
+            if annotation['area'] < epsilon:
+                annotation['area'] = annotation['bbox'][2] * annotation['bbox'][3]
+            if useQtBottomLeft:
+                annotation['bbox'][1] = annotation['bbox'][1] - annotation['bbox'][3]
+
             imgs_info_indexed_by_img_name[img_name]["img_annotation"] = annotation
 
     for img_path in dataset:
@@ -72,7 +82,7 @@ def main():
     parser.add_argument('--dataset_type', default='eiseg', help='type type of dataset is supported is EISeg')
     parser.add_argument('--json_input_dir', default='%s/data/%s/gt' % (settings.PROJECT_ROOT, settings.TEST_DATASET), help='input annotation directory')
     parser.add_argument('--image_input_dir', default='%s/data/%s/img' % (settings.PROJECT_ROOT, settings.TEST_DATASET), help='image directory')
-    parser.add_argument('--output_dir', default='%s/data/%s/COCO' % (settings.PROJECT_ROOT, settings.TEST_DATASET), help='output dataset directory')
+    parser.add_argument('--output_dir', default='%s/data/%s/COCODataFmt' % (settings.PROJECT_ROOT, settings.TEST_DATASET), help='output dataset directory')
 
     args = parser.parse_args()
     try:

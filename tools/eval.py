@@ -1,8 +1,13 @@
-# adpated from PaddleDetection/tools/train.py
+# adpated from PaddleDetection/tools/eval.py
 import os
 import sys
 
-from mtmc.lib.sys import add_path
+try:
+    from mtmc.lib.sys import add_path
+except:
+    def add_path(path):
+        if path not in sys.path:
+            sys.path.append(path)
 # add python path of PadleDetection to sys.path
 parent_path = os.path.abspath(os.path.join(__file__, *(['..'] * 2)))
 
@@ -19,12 +24,13 @@ for k, v in os.environ.items():
 # load config helper
 from ppdet.core.workspace import load_config, merge_config
 from ppdet.engine import Trainer, init_parallel_env, set_random_seed, init_fleet_env
+from ppdet.metrics.coco_utils import json_eval_results
 
 # setup commandline toolkit
 import argparse
 import ppdet.utils.check as check
 from ppdet.utils.logger import setup_logger
-logger = setup_logger('mtmc:trainer')
+logger = setup_logger('mtmc:evaluator')
 
 # load global config
 from mtmc.config import settings
@@ -40,12 +46,15 @@ def parser_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("-c", "--config", help="configuration file to use")
     parser.add_argument(
-        "--eval",
+        "--output_eval",
+        default="%s/tools/output" % settings.PROJECT_ROOT,
+        type=str,
+        help="Evaluation directory, default is current directory.")
+    parser.add_argument(
+        '--json_eval',
         action='store_true',
         default=False,
-        help="Whether to perform evaluation in train")
-    parser.add_argument(
-        "-r", "--resume", default=None, help="weights path for resume")
+        help='Whether to re eval with already exists bbox.json or mask.json')
     # we don't use slim for the moment
     # parser.add_argument(
     #     "--slim_config",
@@ -53,29 +62,13 @@ def parser_args():
     #     type=str,
     #     help="Configuration file of slim method.")
     parser.add_argument(
-        "--enable_ce",
-        type=bool,
-        default=False,
-        help="If set True, enable continuous evaluation job."
-        "This flag is only used for internal test.")
+        "--bias",
+        action="store_true",
+        help="whether add bias or not while getting w and h")
     parser.add_argument(
-        "--fp16",
-        action='store_true',
-        default=False,
-        help="Enable mixed precision training.")
-    # we don't use fleet for the moment
-    # parser.add_argument(
-    #     "--fleet", action='store_true', default=False, help="Use fleet or not")
-    parser.add_argument(
-        "--use_vdl",
-        type=bool,
-        default=False,
-        help="whether to record the data to VisualDL.")
-    parser.add_argument(
-        '--vdl_log_dir',
-        type=str,
-        default="vdl_log_dir/scalar",
-        help='VisualDL logging directory for scalar.')
+        "--classwise",
+        action="store_true",
+        help="whether per-category AP and draw P-R Curve or not.")
     parser.add_argument(
         '--save_prediction_only',
         action='store_true',
@@ -86,15 +79,15 @@ def parser_args():
     args = parser.parse_args()
     return args
 
-
 def main():
     FLAGS = parser_args()
     # load dataset and configuration files
     cfg = load_config(os.path.join(settings.PROJECT_ROOT, FLAGS.config))
 
-    cfg['fp16'] = FLAGS.fp16
-    cfg['use_vdl'] = FLAGS.use_vdl
-    cfg['vdl_log_dir'] = FLAGS.vdl_log_dir
+    cfg['bias'] = 1 if FLAGS.bias else 0
+    cfg['classwise'] = True if FLAGS.classwise else False
+    cfg['output_eval'] = FLAGS.output_eval
+    cfg['save_prediction_only'] = FLAGS.save_prediction_only
 
     # config use_gpu, pretrain_weights key-values
     if FLAGS.opts is not None:
@@ -103,29 +96,32 @@ def main():
             k, v = s.split('=', 1)
             cfg[k] = v
 
-    paddle.set_device('gpu' if cfg.use_gpu else 'cpu')
-
     check.check_config(cfg)
     check.check_gpu(cfg.use_gpu)
     check.check_version()
 
+    if FLAGS.json_eval:
+        logger.info(
+            "In json_eval mode, PaddleDetection will evaluate json files in "
+            "output_eval directly. And proposal.json, bbox.json and mask.json "
+            "will be detected by default.")
+        json_eval_results(
+            cfg.metric,
+            json_directory=FLAGS.output_eval,
+            dataset=cfg['EvalDataset'])
+        return
+
     # init parallel environment if nranks > 1
     init_parallel_env()
 
-    if FLAGS.enable_ce:
-        set_random_seed(0)
-
     # build dataset, data loader and trainer
-    trainer = Trainer(cfg, mode='train')
+    trainer = Trainer(cfg, mode='eval')
 
-    # load weights
-    if FLAGS.resume is not None:
-        return trainer.resume_weights(FLAGS.resume)
-    elif 'pretrain_weights' in cfg and cfg.pretrain_weights:
-        trainer.load_weights(cfg.pretrain_weights)
+    # load trained weights
+    trainer.load_weights(cfg.weights)
 
-    # trainning
-    trainer.train(FLAGS.eval)
+    # evaluating
+    trainer.evaluate()
     return 0
 
 

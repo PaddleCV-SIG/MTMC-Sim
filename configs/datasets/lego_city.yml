@@ -1,15 +1,23 @@
 metric: COCO
-num_classes: 80
+num_classes: 3 # pedestrain, vehicles, background
 
 TrainDataset:
-  !COCODataSet
+  !LeGOCityDataSet
+    name: lego_labeling_samples
     image_dir: train
     anno_path: annotations/train.json
-    dataset_dir: data/datasets/lego_labeling_samples/COCODataFmt
+    dataset_dir: data/lego_labeling_samples/COCODataFmt
     data_fields: ['image', 'gt_bbox', 'gt_class', 'is_crowd']
 
 EvalDataset:
-  !COCODataSet
+  !LeGOCityDataSet
+    name: lego_labeling_samples
     image_dir: val
     anno_path: annotations/val.json
-    dataset_dir: data/datasets/coco/lego_labeling_samples/COCODataFmt
+    dataset_dir: data/lego_labeling_samples/COCODataFmt
+
+TestDataset:
+  !ImageFolder
+    dataset_dir: /home/yiak/WorkSpace/Github/MTMC-Sim/data/lego_labeling_samples/COCODataFmt
+    image_dir: val
+    anno_path: annotations/val.json

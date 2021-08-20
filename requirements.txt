@@ -1,0 +1,4 @@
+# note pycoco API has problems to work with numpy >= 1.21.0
+numpy>=1.17.4
+# used by Pycharm
+opencv-contrib-python
