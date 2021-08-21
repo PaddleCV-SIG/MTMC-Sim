@@ -1,0 +1,10 @@
+_BASE_: [
+  '../datasets/lego_city.yml',
+  '../runtime.yml',
+  './backbones/ppyolo_r50vd_dcn.yml',
+  './optimizer/optimizer_1x.yml',
+  './reader/ppyolo_reader.yml',
+]
+
+snapshot_epoch: 16
+weights: log/models/ppyolo_r50vd_dcn_1x_coco/model_final
